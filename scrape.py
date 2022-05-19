@@ -1,16 +1,16 @@
+import json
+import random
+import re
+import time
 from configparser import ConfigParser
 
-from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, WebDriverException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumwire import webdriver
-import re
-import time
-import json
-import random
+
 config_file = ConfigParser()
 config_file.read("config.ini")
 driver = webdriver.Chrome(config_file.get("BASIC", "DRIVER"))
@@ -164,7 +164,7 @@ def scrape_apartments(start_price, init_pages, increment):
 
     while current <= MAX_PRICE:
         try:
-            while page_count <= MAX_PAGE_COUNT:
+            while page_count > MAX_PAGE_COUNT:
                 increment = max(1, increment / 2)
                 page_count = set_price_range(current, increment)
             print("Pages:" + str(page_count))
