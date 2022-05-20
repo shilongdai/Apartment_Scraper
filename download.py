@@ -9,6 +9,7 @@ from seleniumwire import webdriver
 
 import scrape
 
+
 if __name__ == "__main__":
     config_file = scrape.config_file
     chrome_options = Options()
@@ -28,6 +29,10 @@ if __name__ == "__main__":
         urls.extend(json.load(url_file))
     current = 1
     for url in urls:
+        output_path = os.path.join(output_folder, str(current) + ".json")
+        if os.path.exists(output_path):
+            current = current + 1
+            continue
         fetched = False
         while not fetched:
             try:
@@ -36,11 +41,8 @@ if __name__ == "__main__":
             except WebDriverException:
                 pass
         time.sleep(scrape.get_next_sleep())
-        if url[-1] == "/":
-            url = url[:-1]
-        url = url.replace("/", "~")
-        output_path = os.path.join(output_folder, url + ".html")
+        output = {"url": url, "time:": time.time(), "html": driver.page_source}
         with open(output_path, "w") as file:
-            file.write(driver.page_source)
+            file.write(json.dumps(output))
         print("Downloaded: %d/%d pages" % (current, len(urls)))
         current = current + 1
