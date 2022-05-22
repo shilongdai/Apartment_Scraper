@@ -5,10 +5,15 @@ import time
 
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
 from seleniumwire import webdriver
 
 import scrape
 
+PAGE_DOWNLOAD_READY = scrape.config_file.get("MATCHING", "PAGE_DOWNLOAD_READY_XPATH")
+RETRY_COUNT = int(scrape.config_file.get("BASIC", "FETCH_RETRY"))
 
 if __name__ == "__main__":
     config_file = scrape.config_file
@@ -19,6 +24,7 @@ if __name__ == "__main__":
             chrome_options.add_argument(param.strip())
 
     driver = webdriver.Chrome(config_file.get("BASIC", "DRIVER"), options=chrome_options)
+    wait = WebDriverWait(driver, int(config_file.get("BASIC", "WAIT")))
 
     url_path = sys.argv[1]
     output_folder = sys.argv[2]
@@ -34,15 +40,24 @@ if __name__ == "__main__":
             current = current + 1
             continue
         fetched = False
-        while not fetched:
+
+        retry = 0
+        while not fetched and retry < RETRY_COUNT:
             try:
                 driver.get(url)
+                wait.until(EC.presence_of_element_located((By.XPATH, PAGE_DOWNLOAD_READY)))
                 fetched = True
             except WebDriverException:
                 pass
-        time.sleep(scrape.get_next_sleep())
-        output = {"url": url, "time:": time.time(), "html": driver.page_source}
-        with open(output_path, "w") as file:
-            file.write(json.dumps(output))
-        print("Downloaded: %d/%d pages" % (current, len(urls)))
+            retry = retry + 1
+            if driver.current_url != url:
+                break
+        if fetched:
+            time.sleep(scrape.get_next_sleep())
+            output = {"url": url, "time:": time.time(), "html": driver.page_source}
+            with open(output_path, "w") as file:
+                file.write(json.dumps(output))
+            print("Downloaded: %d/%d pages" % (current, len(urls)))
+        else:
+            print("Skipped: " + url)
         current = current + 1
