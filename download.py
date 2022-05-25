@@ -54,7 +54,12 @@ if __name__ == "__main__":
                 break
         if fetched:
             time.sleep(scrape.get_next_sleep())
-            output = {"url": url, "time:": time.time(), "html": driver.page_source}
+            final_page_source = driver.page_source
+            time.sleep(0.5)
+            while final_page_source != driver.page_source:
+                final_page_source = driver.page_source
+                time.sleep(0.1)
+            output = {"url": url, "time:": time.time(), "html": final_page_source}
             with open(output_path, "w") as file:
                 file.write(json.dumps(output))
             print("Downloaded: %d/%d pages" % (current, len(urls)))

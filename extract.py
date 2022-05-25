@@ -34,6 +34,44 @@ FEE_SECTION_NOTE_LABEL_SELECTOR = "span"
 FEE_SECTION_LIST_SELECTOR = "ul li"
 FEE_SECTION_LIST_ROW_SELECTOR = "div.component-row"
 
+NEIGHBOR_SECTION_SELECTOR = "section#subMarketSection"
+NEIGHBOR_TEXT_SELECTOR = "div.overViewWrapper"
+
+EDUC_SECTION_SELECTOR = "div#educationContainer"
+EDUC_COLLEGE_SELECTOR = "div#profilev2College"
+
+SCHOOL_SECTION_SELECTOR = "div#profilev2SchoolsModule"
+PUBLIC_SCHOOL_SECTION_SELECTOR = "div.schoolsPublicContainer"
+PRIVATE_SCHOOL_SECTION_SELECTOR = "div.schoolsPrivateContainer"
+SCHOOL_CARD_SELECTOR = "div.card"
+SCHOOL_CARD_NAME_SELECTOR = "div.title"
+SCHOOL_CARD_TYPE_SELECTOR = "div.subtitle"
+SCHOOL_CARD_ATTR_SELECTOR = "div.bodyTextLine"
+SCHOOL_CARD_ZONE_SELECTOR = "div.nearbySchools span"
+
+TRANSPORTATION_HEAD_SELECTOR = "thead.longLabel th.headerCol1"
+TRANSPORTATION_DETAIL_SECTION_SELECTOR = "div.transportationDetail"
+TRANSPORTATION_SECTION_SELECTOR = "section#transportationSection"
+TRANSPORTATION_SELECTOR = "div.transportationDetail table tbody"
+WALK_SCORE_SELECTOR = "div#transportationScoreCard > div.walkScore div.score"
+TRANSIT_SCORE_SELECTOR = "div#transportationScoreCard > div.transitScore div.score"
+BIKE_SCORE_SELECTOR = "div#transportationScoreCard > div.bikeScore div.score"
+SOUND_SCORE_SECTION_SELECTOR = "div#soundScoreSection"
+SOUND_SCORE_SELECTOR = "div.score"
+TRAFFIC_LEVEL_SELECTOR = "div.soundScoreCategory span.ssTrafficData"
+AIRPORT_LEVEL_SELECTOR = "div.soundScoreCategory span.ssAirportsData"
+BUSI_LEVEL_SELECTOR = "div.soundScoreCategory span.ssBusinessData"
+
+PRICE_SECTION_SELECTOR = "div#pricingView"
+PRICE_MODEL_SELECTOR = "div.pricingGridItem"
+PRICE_MODEL_OVERVIEW_SELECTOR = "div.priceBedRangeInfo"
+MODEL_NAME_SELECTOR = "span.modelName"
+MODEL_RENT_SELECTOR = "span.rentLabel"
+MODEL_DETAILS_SELECTOR = "h4.detailsLabel span.detailsTextWrapper > span"
+MODEL_FEATURES_SELECTOR = "ul.allAmenities li ul li"
+MODEL_UNITS_SELECTOR = "li.unitContainer"
+MODEL_UNITS_SQFT_SELECTOR = "div.sqftColumn span:nth-child(2)"
+
 STATE_ZIP_REGEX = "stateZipContainer"
 NEIGHBOR_REGEX = "neighborhoodAddress"
 
@@ -178,13 +216,203 @@ def extract_fees(soup, output_data):
             next_sibling = next_sibling.find_next_sibling()
 
 
+def extract_neighbor_desc(soup, output_data):
+    neighbor_section = soup.select_one(NEIGHBOR_SECTION_SELECTOR)
+    if neighbor_section is not None:
+        neighbor_text_section = neighbor_section.select_one(NEIGHBOR_TEXT_SELECTOR)
+        neighbor_section_text = neighbor_text_section.get_text().strip()
+        output_data["neighborhood_desc"] = neighbor_section_text
+
+
+def extract_transportation(soup):
+    transportation_section = soup.select_one(TRANSPORTATION_SELECTOR)
+    if transportation_section is None:
+        return []
+    transportation_infos = transportation_section.select("tr")
+    result = []
+    for row in transportation_infos:
+        row_list = []
+        for col in row.select("td"):
+            row_list.append(col.get_text().strip())
+        result.append(row_list)
+    return result
+
+
+def extract_colleges(soup, output_data):
+    college_section = soup.select_one(EDUC_COLLEGE_SELECTOR)
+    if college_section is None:
+        return
+    college_transportation = extract_transportation(college_section)
+    if len(college_transportation) != 0:
+        output_data["colleges"] = college_transportation
+
+
+def extract_school_info(soup):
+    school_cards = soup.select(SCHOOL_CARD_SELECTOR)
+    result = []
+    for card in school_cards:
+        name_elt = card.select_one(SCHOOL_CARD_NAME_SELECTOR)
+        type_elt = card.select_one(SCHOOL_CARD_TYPE_SELECTOR)
+        zone_elt = card.select_one(SCHOOL_CARD_ZONE_SELECTOR)
+        attribute_elts = card.select(SCHOOL_CARD_ATTR_SELECTOR)
+        attributes = []
+        for attr in attribute_elts:
+            attributes.append(attr.get_text().strip())
+        card_data = {"name": name_elt.get_text().strip(), "type": type_elt.get_text().strip(),
+                     "zone": zone_elt.get_text().strip()}
+        if len(attributes) > 0:
+            card_data["attributes"] = attributes
+        result.append(card_data)
+    return result
+
+
+def extract_schools(soup, output_data):
+    public_school_section = soup.select_one(PUBLIC_SCHOOL_SECTION_SELECTOR)
+    if public_school_section is not None:
+        public_schools = extract_school_info(public_school_section)
+        if len(public_schools) > 0:
+            output_data["public_schools"] = public_schools
+    private_school_section = soup.select_one(PRIVATE_SCHOOL_SECTION_SELECTOR)
+    if private_school_section is not None:
+        private_schools = extract_school_info(private_school_section)
+        if len(private_schools) > 0:
+            output_data["private_schools"] = private_schools
+
+
+def extract_education(soup, output_data):
+    education_section = soup.select_one(EDUC_SECTION_SELECTOR)
+    if education_section is None:
+        return
+    education_data = {}
+    extract_colleges(soup, education_data)
+    extract_schools(soup, education_data)
+    if len(education_data) > 0:
+        output_data["education"] = education_data
+
+
+def extract_transportation_details(soup):
+    transportation_head = soup.select_one(TRANSPORTATION_HEAD_SELECTOR)
+    if transportation_head is None:
+        return None
+    head_text = transportation_head.get_text().strip()
+    transportation_list = extract_transportation(soup)
+    if len(transportation_list) > 0:
+        return {"type": head_text, "available": transportation_list}
+
+
+def extract_nearby_transportation(soup, output_data):
+    transportation_section = soup.select_one(TRANSPORTATION_SECTION_SELECTOR)
+    if transportation_section is None:
+        return
+    transportation_details = soup.select(TRANSPORTATION_DETAIL_SECTION_SELECTOR)
+    detail_list = []
+    for detail in transportation_details:
+        detail_item = extract_transportation_details(detail)
+        if detail_item is not None:
+            detail_list.append(detail_item)
+
+    if len(detail_list) > 0:
+        output_data["transportation"] = detail_list
+
+
+def extract_environment(soup, output_data):
+    transit_score = soup.select_one(TRANSIT_SCORE_SELECTOR)
+    bike_score = soup.select_one(BIKE_SCORE_SELECTOR)
+    walk_score = soup.select_one(WALK_SCORE_SELECTOR)
+
+    data_entry = {}
+    if transit_score is not None:
+        data_entry["transit_score"] = transit_score.get_text().strip()
+
+    if bike_score is not None:
+        data_entry["bike_score"] = bike_score.get_text().strip()
+
+    if walk_score is not None:
+        data_entry["walk_score"] = walk_score.get_text().strip()
+
+    sound_score_section = soup.select_one(SOUND_SCORE_SECTION_SELECTOR)
+    if sound_score_section is not None:
+        sound_score = sound_score_section.select_one(SOUND_SCORE_SELECTOR)
+        traffic_level = sound_score_section.select_one(TRAFFIC_LEVEL_SELECTOR)
+        busi_level = sound_score_section.select_one(BUSI_LEVEL_SELECTOR)
+        airport_level = sound_score_section.select_one(AIRPORT_LEVEL_SELECTOR)
+        if sound_score is not None:
+            data_entry["sound_score"] = sound_score.get_text().strip()
+        if traffic_level is not None:
+            data_entry["traffic_level"] = traffic_level.get_text().strip()
+        if busi_level is not None:
+            data_entry["busi_level"] = busi_level.get_text().strip()
+        if airport_level is not None:
+            data_entry["airport_level"] = airport_level.get_text().strip()
+
+    if len(data_entry) > 0:
+        output_data["environment"] = data_entry
+
+
+def extract_individual_model(soup):
+    result = {}
+    overview_section = soup.select_one(PRICE_MODEL_OVERVIEW_SELECTOR)
+    if overview_section is None:
+        return None
+
+    name = overview_section.select_one(MODEL_NAME_SELECTOR)
+    rent = overview_section.select_one(MODEL_RENT_SELECTOR)
+    details = overview_section.select(MODEL_DETAILS_SELECTOR)
+    result["name"] = name.get_text().strip()
+    result["rent"] = rent.get_text().strip()
+    detail_list = []
+    for detail in details:
+        detail_list.append(detail.get_text().strip())
+    result["details"] = detail_list
+
+    features = soup.select(MODEL_FEATURES_SELECTOR)
+    feature_list = []
+    for feature in features:
+        feature_list.append(feature.get_text().strip())
+    feature_list = list(set(feature_list))
+    if len(feature_list) > 0:
+        result["features"] = feature_list
+
+    model_units = soup.select(MODEL_UNITS_SELECTOR)
+    unit_list = []
+    for unit in model_units:
+        attributes = unit.attrs
+        unit_data = {"name": attributes["data-unit"], "rent": attributes["data-maxrent"]}
+        sqft_elt = unit.select_one(MODEL_UNITS_SQFT_SELECTOR)
+        unit_data["sqft"] = sqft_elt.get_text().strip()
+        unit_list.append(unit_data)
+    if len(unit_list) > 0:
+        result["units"] = unit_list
+    if len(result) > 0:
+        return result
+
+
+def extract_model(soup, output_data):
+    price_section = soup.select_one(PRICE_SECTION_SELECTOR)
+    if price_section is None:
+        return
+    models = []
+    for model in price_section.select(PRICE_MODEL_SELECTOR):
+        indi_model = extract_individual_model(model)
+        if indi_model is not None:
+            models.append(indi_model)
+    if len(models) > 0:
+        output_data["models"] = models
+
+
 def extract_data(key, input_data):
     soup = bs4.BeautifulSoup(input_data["html"], "html.parser")
-    output = {}
+    output = dict(input_data)
+    del output["html"]
     extract_header(soup, output)
     extract_apartment_desc(soup, output)
     extract_amenities(soup, output)
     extract_fees(soup, output)
+    extract_neighbor_desc(soup, output)
+    extract_education(soup, output)
+    extract_nearby_transportation(soup, output)
+    extract_environment(soup, output)
+    extract_model(soup, output)
     return key, output
 
 
