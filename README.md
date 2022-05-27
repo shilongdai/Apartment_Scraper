@@ -40,4 +40,4 @@ Finally, after the extraction is complete, run:
 python compile.py extract/
 ```
 
-to clean the data and output a final .json and .csv file.
+to format the data and output a final .json and .csv file.
