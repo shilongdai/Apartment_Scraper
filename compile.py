@@ -579,6 +579,6 @@ if __name__ == "__main__":
     ]
     csv_dict = convert_to_csv(result, processors)
     dataframe = pd.DataFrame(csv_dict)
-    with open("compile.json", "w") as output_file:
+    with open("sample_compile.json", "w") as output_file:
         json.dump(result, output_file)
-    dataframe.to_csv("compile.csv")
+    dataframe.to_csv("sample_compile.csv")
