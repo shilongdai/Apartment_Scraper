@@ -99,6 +99,8 @@ def extract_header(soup, output_data):
     address_parts = address_section.select(ADDRESS_PART_SELECTOR)
     for i, part in enumerate(address_parts):
         extract_address_part(i, part, output_data)
+    property_name = soup.select_one(PROPERTY_NAME_SELECTOR)
+    output_data["name"] = property_name.get_text().strip()
 
 
 def extract_apartment_desc(soup, output_data):
@@ -416,9 +418,7 @@ def extract_data(key, input_data):
     return key, output
 
 
-if __name__ == "__main__":
-    input_dir = sys.argv[1]
-    output_dir = sys.argv[2]
+def load_json_from(input_dir):
     input_data = {}
 
     for file in os.listdir(input_dir):
@@ -427,6 +427,13 @@ if __name__ == "__main__":
             with open(full_path, "r") as fp:
                 data = json.load(fp)
                 input_data[file] = data
+    return input_data
+
+
+if __name__ == "__main__":
+    input_dir = sys.argv[1]
+    output_dir = sys.argv[2]
+    input_data = load_json_from(input_dir)
 
     with mp.Pool(PROCESS_COUNT) as pool:
         results = []
