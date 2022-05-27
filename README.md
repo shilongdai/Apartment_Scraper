@@ -2,6 +2,10 @@
 
 This is a python + selenium + bs4 based webscraper used to extract apartment data from apartments.com. The final output is a json file with the desired apartment informations, and a csv file with apartments in vector forms.
 
+## Sample Output
+
+The sample output from scanning one apartment can be found in the repository at sample_compile.json and sample_compile.csv
+
 ## Usage
 
 First, edit the config.ini file to point the _DRIVER_ field to the path of the chromedriver. Then, update the _URL_TEMPLATE_ to be pointed to the search result page of apartments.com for a given area. The two placeholder %d in the templates are used to narrow down the price range of the search results so that the 28 page limitation is avoided.
