@@ -348,7 +348,10 @@ def copy_apartment_processor(cols, default=None):
 
 def escape_for_csv(string):
     string = string.replace(" ", ".")
-    return re.sub("[^\\w.]+", "", string)
+    string = re.sub("[^\\w.]+", "", string)
+    while ".." in string:
+        string = string.replace("..", ".")
+    return string
 
 
 def amenities_processor(compiled_data):
@@ -430,29 +433,43 @@ def parking_processor():
     return cols, parking_handler
 
 
-def college_processor(compiled_data):
-    aggregate_cols = ["college.count"]
+def find_colleges_csv(compiled_data):
     college_vector_map = {}
     for data in compiled_data:
         if "colleges" in data:
             for college in data["colleges"]:
                 college_vector_map[college["name"]] = escape_for_csv(college["name"])
+    return college_vector_map
+
+
+def college_aggregate_processor(college_vector_map):
+    aggregate_cols = ["college.count"]
 
     def college_handler(model, data):
         result = {"college.count": 0}
+        if "colleges" in data:
+            for college in data["colleges"]:
+                result["college.count"] += 1
+        return result
+
+    return aggregate_cols, college_handler
+
+
+def college_name_processor(college_vector_map):
+
+    def college_handler(model, data):
+        result = {}
         for val in college_vector_map.values():
             result[val] = False
         if "colleges" in data:
             for college in data["colleges"]:
                 result[college_vector_map[college["name"]]] = True
-                result["college.count"] += 1
         return result
 
-    aggregate_cols.extend(college_vector_map.values())
-    return aggregate_cols, college_handler
+    return list(college_vector_map.values()), college_handler
 
 
-def school_processor(compiled_data):
+def find_schools_csv(compiled_data):
     aggregate_cols = {}
     school_vector_map = {}
     for data in compiled_data:
@@ -460,23 +477,35 @@ def school_processor(compiled_data):
             for school in data["schools"]:
                 aggregate_cols[school["type"]] = escape_for_csv(school["type"])
                 school_vector_map[school["name"]] = escape_for_csv(school["name"])
+    return aggregate_cols, school_vector_map
+
+
+def aggregate_school_processor(aggregate_cols):
 
     def school_handler(model, data):
         result = {}
         for val in aggregate_cols.values():
             result[val] = 0
+
+        if "schools" in data:
+            for school in data["schools"]:
+                result[aggregate_cols[school["type"]]] += 1
+        return result
+    return set(aggregate_cols.values()), school_handler
+
+
+def school_name_processor(school_vector_map):
+
+    def school_handler(model, data):
+        result = {}
         for val in school_vector_map.values():
             result[val] = False
 
         if "schools" in data:
             for school in data["schools"]:
-                result[aggregate_cols[school["type"]]] += 1
-                result[school_vector_map[school["name"]]] += 1
+                result[school_vector_map[school["name"]]] = True
         return result
-
-    cols = list(aggregate_cols.values())
-    cols.extend(school_vector_map.values())
-    return cols, school_handler
+    return set(school_vector_map.values()), school_handler
 
 
 def transportation_processor():
@@ -560,22 +589,27 @@ if __name__ == "__main__":
         if len(output_frame) > 0:
             result.append(output_frame)
 
+    college_vector_map = find_colleges_csv(result)
+    aggregate_schools, school_map = find_schools_csv(result)
+
     processors = [
         partial(copy_apartment_processor, {"name": "name", "city": "city", "state": "state",
                                            "zip": "zip", "address": "address"}),
         partial(copy_apartment_processor, {"neighborhood": "neighborhood"}, "Unknown"),
-        partial(amenities_processor, result),
         pet_processor,
         parking_processor,
-        partial(college_processor, result),
-        partial(school_processor, result),
+        partial(aggregate_school_processor, aggregate_schools),
+        partial(college_aggregate_processor, college_vector_map),
         transportation_processor,
         partial(copy_apartment_processor, {"transit_score": "transit.score", "bike_score": "bike.score",
                                            "walk_score": "walk.score", "sound_score": "sound.score"}, float("nan")),
         partial(copy_apartment_processor, {"traffic_level": "traffic.level", "busi_level": "busi.level",
                                            "airport_level": "air.level"}, "Unknown"),
         partial(copy_model_processor, {"beds": "beds", "baths": "baths", "rent": "rent", "sqft": "sqft"}),
-        partial(features_processor, result)
+        partial(features_processor, result),
+        partial(amenities_processor, result),
+        partial(school_name_processor, school_map),
+        partial(college_name_processor, college_vector_map)
     ]
     csv_dict = convert_to_csv(result, processors)
     dataframe = pd.DataFrame(csv_dict)
