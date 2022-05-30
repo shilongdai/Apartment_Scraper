@@ -71,6 +71,7 @@ MODEL_DETAILS_SELECTOR = "h4.detailsLabel span.detailsTextWrapper > span"
 MODEL_FEATURES_SELECTOR = "ul.allAmenities li ul li"
 MODEL_UNITS_SELECTOR = "li.unitContainer"
 MODEL_UNITS_SQFT_SELECTOR = "div.sqftColumn span:nth-child(2)"
+MODEL_UNITS_RENT_SELECTOR = "div.pricingColumn span:nth-child(2)"
 
 STATE_ZIP_REGEX = "stateZipContainer"
 NEIGHBOR_REGEX = "neighborhoodAddress"
@@ -379,9 +380,11 @@ def extract_individual_model(soup):
     unit_list = []
     for unit in model_units:
         attributes = unit.attrs
-        unit_data = {"name": attributes["data-unit"], "rent": attributes["data-maxrent"]}
+        unit_data = {"name": attributes["data-unit"]}
         sqft_elt = unit.select_one(MODEL_UNITS_SQFT_SELECTOR)
         unit_data["sqft"] = sqft_elt.get_text().strip()
+        rent_elt = unit.select_one(MODEL_UNITS_RENT_SELECTOR)
+        unit_data["rent"] = rent_elt.get_text().strip()
         unit_list.append(unit_data)
     if len(unit_list) > 0:
         result["units"] = unit_list

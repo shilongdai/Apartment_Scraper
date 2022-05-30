@@ -25,6 +25,8 @@ def sorted_freq_list(items):
 def parse_number_range(string):
     if "–" in string:
         strings = string.split("–")
+    elif "-" in string:
+        strings = string.split("-")
     else:
         strings = [string]
     numbers = []
