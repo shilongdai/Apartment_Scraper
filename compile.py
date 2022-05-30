@@ -384,7 +384,7 @@ def pet_processor():
     cols = {"pet.allowed", "pet.rent", "pet.deposit", "pet.fee"}
 
     def pet_handler(model, data):
-        result = {"pet.allowed": None, "pet.rent": 0, "pet.deposit": 0, "pet.fee": 0}
+        result = {"pet.allowed": "unknown", "pet.rent": 0, "pet.deposit": 0, "pet.fee": 0}
         if "pet" in data:
             pet = data["pet"]
             if "type" in pet:
