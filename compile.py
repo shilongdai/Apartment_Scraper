@@ -31,7 +31,7 @@ def parse_number_range(string):
         strings = [string]
     numbers = []
     for string in strings:
-        number = re.sub("[^0-9]+", "", string)
+        number = re.sub("[^\\d*.?\\d+]", "", string)
         if len(number) == 0:
             continue
         numbers.append(float(number))
