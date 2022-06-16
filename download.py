@@ -14,6 +14,7 @@ from seleniumwire import webdriver
 import scrape
 
 PAGE_DOWNLOAD_READY = scrape.config_file.get("MATCHING", "PAGE_DOWNLOAD_READY_XPATH")
+PAGE_DOWNLOAD_LOADED = scrape.config_file.get("MATCHING", "PAGE_DOWNLOAD_LOADED_XPATH")
 RETRY_COUNT = int(scrape.config_file.get("BASIC", "FETCH_RETRY"))
 
 if __name__ == "__main__":
@@ -50,8 +51,10 @@ if __name__ == "__main__":
                 element = driver.find_element(By.XPATH, PAGE_DOWNLOAD_READY)
                 actions = ActionChains(driver)
                 actions.move_to_element(element).perform()
+                wait.until(EC.presence_of_element_located((By.XPATH, PAGE_DOWNLOAD_LOADED)))
                 fetched = True
-            except WebDriverException:
+            except WebDriverException as e:
+                print(e)
                 pass
             retry = retry + 1
             if driver.current_url != url:
