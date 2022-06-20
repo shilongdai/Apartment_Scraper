@@ -1,3 +1,6 @@
+import json
+from datetime import datetime
+
 import googlemaps
 import pandas as pd
 
@@ -38,9 +41,9 @@ def fetch_geo(addresses):
 
 
 def fetch_transit(addresses):
-    data_dict = {"address": [], "distance": [], "walk.time": [], "transit.time": [], "lat": [], "lng": []}
+    data_dict = {"address": [], "distance": [], "walk.time": [], "transit.time": []}
     time = datetime.now()
-    time = time.replace(month=6, day=13, hour=9, minute=30)
+    time = time.replace(month=6, day=20, hour=9, minute=30)
     for addr in set(addresses):
         retry = 0
         while retry < 3:
@@ -86,9 +89,9 @@ if __name__ == "__main__":
     for p in apartments:
         addresses.append(ADDR_TEMPLATE % (p["address"], p["city"], p["state"]))
 
-    #    transit_dict = fetch_transit(addresses)
+    transit_dict = fetch_transit(addresses)
+    transit_df = pd.DataFrame(transit_dict)
+    transit_df.to_csv("transport.csv", index=False)
     geo_dict = fetch_geo(addresses)
-    #    transit_df = pd.DataFrame(transit_dict)
     geo_df = pd.DataFrame(geo_dict)
-    #    transit_df.to_csv("transport.csv", index=False)
     geo_df.to_csv("geo.csv", index=False)
