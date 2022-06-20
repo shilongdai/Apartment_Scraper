@@ -291,6 +291,11 @@ def extract_model_setup(model, output):
     sqft, rent = find_model_median_area_rent(model)
     output["rent"] = rent
     output["sqft"] = sqft
+    output["available"] = True
+    for info in model["details"]:
+        if "Not Available" in info:
+            output["available"] = False
+            break
 
 
 def compile_model_information(raw, output):
@@ -607,7 +612,8 @@ if __name__ == "__main__":
                                            "walk_score": "walk.score", "sound_score": "sound.score"}, float("nan")),
         partial(copy_apartment_processor, {"traffic_level": "traffic.level", "busi_level": "busi.level",
                                            "airport_level": "air.level"}, "Unknown"),
-        partial(copy_model_processor, {"beds": "beds", "baths": "baths", "rent": "rent", "sqft": "sqft"}),
+        partial(copy_model_processor,
+                {"beds": "beds", "baths": "baths", "rent": "rent", "sqft": "sqft", "available": "available"}),
         partial(features_processor, result),
         partial(amenities_processor, result),
         partial(school_name_processor, school_map),
