@@ -10,6 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumwire import webdriver
+from selenium.webdriver.chrome.service import Service
 
 import scrape
 
@@ -25,7 +26,7 @@ if __name__ == "__main__":
         if len(param.strip()) != 0:
             chrome_options.add_argument(param.strip())
 
-    driver = webdriver.Chrome(config_file.get("BASIC", "DRIVER"), options=chrome_options)
+    driver = webdriver.Chrome(Service(config_file.get("BASIC", "DRIVER")), options=chrome_options)
     wait = WebDriverWait(driver, int(config_file.get("BASIC", "WAIT")))
 
     url_path = sys.argv[1]

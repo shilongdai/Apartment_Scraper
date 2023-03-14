@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumwire import webdriver
+from selenium.webdriver.chrome.service import Service
 
 config_file = ConfigParser()
 config_file.read("config.ini")
@@ -197,7 +198,7 @@ def scrape_apartments(driver, start_price, init_pages, increment):
 
 
 if __name__ == "__main__":
-    chrome_driver = webdriver.Chrome(config_file.get("BASIC", "DRIVER"), options=chrome_options)
+    chrome_driver = webdriver.Chrome(Service(config_file.get("BASIC", "DRIVER")), options=chrome_options)
     start = START_PRICE
     chrome_driver.get(URL % (START_PRICE, START_PRICE))
     chrome_driver.maximize_window()
