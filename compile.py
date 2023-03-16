@@ -9,8 +9,16 @@ import pandas as pd
 
 import extract
 
-AMENITIES_LIMIT = 300
-FEATURES_LIMIT = 200
+AMENITIES_LIMIT = 0
+FEATURES_LIMIT = 0
+UNK_LABEL = "Unknown"
+
+
+def copy_or_unknown(in_dict, out_dict, in_key, out_key):
+    if in_key in in_dict:
+        out_dict[out_key] = in_dict[in_key]
+    else:
+        out_dict[out_key] = UNK_LABEL
 
 
 def sorted_freq_list(items):
@@ -51,14 +59,18 @@ def freq_table(list_data):
 
 
 def copy_header_address(raw, output):
-    output["name"] = raw["name"]
-    output["city"] = raw["city"]
-    state_zip = raw["state_zip"].split(" ")
-    output["state"] = state_zip[0]
-    output["zip"] = int(state_zip[1])
-    output["address"] = raw["address"]
-    if "neighborhood" in raw:
-        output["neighborhood"] = raw["neighborhood"]
+    copy_or_unknown(raw, output, "name", "name")
+    copy_or_unknown(raw, output, "city", "city")
+    copy_or_unknown(raw, output, "address", "address")
+    copy_or_unknown(raw, output, "neighborhood", "neighborhood")
+    copy_or_unknown(raw, output, "type", "type")
+    if "state_zip" in raw:
+        state_zip = raw["state_zip"].split(" ")
+        output["state"] = state_zip[0]
+        output["zip"] = int(state_zip[1])
+    else:
+        output["state"] = UNK_LABEL
+        output["zip"] = UNK_LABEL
 
 
 def copy_desc_information(raw, output):
@@ -590,6 +602,7 @@ if __name__ == "__main__":
 
     result = []
     for key in input_data:
+        print("Processing: " + key)
         input_frame = input_data[key]
         output_frame = {}
         compile_information(input_frame, output_frame)
@@ -601,8 +614,8 @@ if __name__ == "__main__":
 
     processors = [
         partial(copy_apartment_processor, {"name": "name", "city": "city", "state": "state",
-                                           "zip": "zip", "address": "address"}),
-        partial(copy_apartment_processor, {"neighborhood": "neighborhood"}, "Unknown"),
+                                           "zip": "zip", "address": "address", "type": "type"}, UNK_LABEL),
+        partial(copy_apartment_processor, {"neighborhood": "neighborhood"}, UNK_LABEL),
         pet_processor,
         parking_processor,
         partial(aggregate_school_processor, aggregate_schools),
@@ -611,7 +624,7 @@ if __name__ == "__main__":
         partial(copy_apartment_processor, {"transit_score": "transit.score", "bike_score": "bike.score",
                                            "walk_score": "walk.score", "sound_score": "sound.score"}, float("nan")),
         partial(copy_apartment_processor, {"traffic_level": "traffic.level", "busi_level": "busi.level",
-                                           "airport_level": "air.level"}, "Unknown"),
+                                           "airport_level": "air.level"}, UNK_LABEL),
         partial(copy_model_processor,
                 {"beds": "beds", "baths": "baths", "rent": "rent", "sqft": "sqft", "available": "available"}),
         partial(features_processor, result),
@@ -621,6 +634,8 @@ if __name__ == "__main__":
     ]
     csv_dict = convert_to_csv(result, processors)
     dataframe = pd.DataFrame(csv_dict)
+    print("Len Result: " + str(len(result)))
+    print("Len Dataframe: " + str(len(dataframe)))
     with open("compile.json", "w") as output_file:
         json.dump(result, output_file)
     dataframe.to_csv("compile.csv")

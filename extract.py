@@ -15,6 +15,8 @@ PROPERTY_HEADER_SECTION_SELECTOR = "div.profilePropertyInfoWrapper#propertyHeade
 PROPERTY_NAME_SELECTOR = "h1#propertyName"
 PROPERTY_ADDRESS_SECTION_SELECTOR = "div.propertyAddressContainer"
 ADDRESS_PART_SELECTOR = "h2 span"
+BREAD_SELECTOR = "div[id='breadcrumbs-container']"
+CRUMB_SELECTOR = "span[class='crumb']"
 
 DESC_SECTION_SELECTOR = "section#descriptionSection"
 CUSTOM_DESC_SELECTOR = "p"
@@ -73,17 +75,17 @@ MODEL_UNITS_SELECTOR = "li.unitContainer"
 MODEL_UNITS_SQFT_SELECTOR = "div.sqftColumn span:nth-child(2)"
 MODEL_UNITS_RENT_SELECTOR = "div.pricingColumn span:nth-child(2)"
 
+TOP_MODEL_SELECTOR = "ul[class='priceBedRangeInfo']"
+TOP_INFO_SEGMENT_SELECTOR = "div[class='priceBedRangeInfoInnerContainer']"
+TOP_INFO_NAME_SELECTOR = "p[class='rentInfoLabel']"
+TOP_INFO_CONTENT_SELECTOR = "p[class='rentInfoDetail']"
+
 STATE_ZIP_REGEX = "stateZipContainer"
 NEIGHBOR_REGEX = "neighborhoodAddress"
+ADDRESS_REGEX = "delivery-address"
 
 
 def extract_address_part(index, part, output_data):
-    if index == 0:
-        output_data["address"] = part.get_text()
-        return
-    if index == 1:
-        output_data["city"] = part.get_text()
-        return
     if "class" not in part.attrs:
         return
     if re.match(STATE_ZIP_REGEX, part.attrs["class"][0]):
@@ -92,16 +94,23 @@ def extract_address_part(index, part, output_data):
     if re.match(NEIGHBOR_REGEX, part.attrs["class"][0]):
         output_data["neighborhood"] = part.get_text().strip()[2:]
         return
+    if re.match(ADDRESS_REGEX, part.attrs["class"][0]):
+        output_data["address"] = part.get_text()
+        return
 
 
 def extract_header(soup, output_data):
     header_section = soup.select_one(PROPERTY_HEADER_SECTION_SELECTOR)
+    bread_section = header_section.select_one(BREAD_SELECTOR)
+    crumbs = bread_section.select(CRUMB_SELECTOR)
     address_section = header_section.select_one(PROPERTY_ADDRESS_SECTION_SELECTOR)
     address_parts = address_section.select(ADDRESS_PART_SELECTOR)
     for i, part in enumerate(address_parts):
         extract_address_part(i, part, output_data)
     property_name = soup.select_one(PROPERTY_NAME_SELECTOR)
     output_data["name"] = property_name.get_text().strip()
+    output_data["type"] = crumbs[0].text.strip()
+    output_data["city"] = crumbs[2].text.strip()
 
 
 def extract_apartment_desc(soup, output_data):
@@ -164,7 +173,7 @@ def extract_fee_section_note(soup, content_list):
         note_label_text = "note"
         if note_label is not None:
             note_label_text = note_label.get_text().strip()
-        note_content_text = note_section.find(text=True, recursive=False).strip()
+        note_content_text = note_section.find(string=True, recursive=False).text.strip()
         content_list.append({"key": note_label_text, "content": note_content_text})
 
 
@@ -392,10 +401,7 @@ def extract_individual_model(soup):
         return result
 
 
-def extract_model(soup, output_data):
-    price_section = soup.select_one(PRICE_SECTION_SELECTOR)
-    if price_section is None:
-        return
+def extract_units_model(output_data, price_section):
     models = []
     for model in price_section.select(PRICE_MODEL_SELECTOR):
         indi_model = extract_individual_model(model)
@@ -404,6 +410,37 @@ def extract_model(soup, output_data):
     if len(models) > 0:
         output_data["models"] = models
 
+
+def extract_whole_model(soup, output_data):
+    model = {}
+    details = ["", "", ""]
+    model["name"] = "self"
+    model["features"] = []
+    info_bar = soup.select_one(TOP_MODEL_SELECTOR)
+    if info_bar is None:
+        return
+    for info in info_bar.select("li"):
+        info_name = info.select_one(TOP_INFO_NAME_SELECTOR).text.strip().lower()
+        info_content = info.select_one(TOP_INFO_CONTENT_SELECTOR).text.strip()
+
+        if info_name == "monthly rent":
+            model["rent"] = info_content
+        if info_name == "bedrooms":
+            details[0] = info_content
+        if info_name == "bathrooms":
+            details[1] = info_content
+        if info_name == "square feet":
+            details[2] = info_content
+    model["details"] = details
+    output_data["models"] = [model]
+
+
+def extract_model(soup, output_data):
+    price_section = soup.select_one(PRICE_SECTION_SELECTOR)
+    if price_section is not None:
+        extract_units_model(output_data, price_section)
+    elif output_data["type"] != "Home":
+        extract_whole_model(soup, output_data)
 
 def extract_data(key, input_data):
     soup = bs4.BeautifulSoup(input_data["html"], "html.parser")

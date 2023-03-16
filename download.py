@@ -26,7 +26,7 @@ if __name__ == "__main__":
         if len(param.strip()) != 0:
             chrome_options.add_argument(param.strip())
 
-    driver = webdriver.Chrome(Service(config_file.get("BASIC", "DRIVER")), options=chrome_options)
+    driver = webdriver.Chrome(service=Service(config_file.get("BASIC", "DRIVER")), options=chrome_options)
     wait = WebDriverWait(driver, int(config_file.get("BASIC", "WAIT")))
 
     url_path = sys.argv[1]

@@ -78,11 +78,11 @@ def wait_for_search(xpath):
 
 def find_num_results(driver, no_res_path, res_count_path, page_regex, page_regex_group):
     try:
-        driver.find_element_by_xpath(no_res_path)
+        driver.find_element(By.XPATH, no_res_path)
         return 0
     except NoSuchElementException:
         try:
-            page_elt = driver.find_element_by_xpath(res_count_path)
+            page_elt = driver.find_element(By.XPATH, res_count_path)
             page_match = re.match(page_regex, page_elt.text)
             return int(page_match.group(page_regex_group))
         except NoSuchElementException:
@@ -94,7 +94,7 @@ def go_to_next_page(driver, current, next_xpath):
     wait.until(EC.presence_of_element_located((By.XPATH, PAGE_NAV_XPATH)))
     while True:
         try:
-            next_btn = driver.find_element_by_xpath((PAGE_NUM_XPATH_TEMPLATE % (current + 1)))
+            next_btn = driver.find_element(By.XPATH, (PAGE_NUM_XPATH_TEMPLATE % (current + 1)))
             break
         except NoSuchElementException:
             try:
@@ -111,7 +111,7 @@ def scan_current_page(driver, link_path):
     while len(result) == 0:
         try:
             wait.until(EC.element_to_be_clickable((By.XPATH, link_path)))
-            elements = driver.find_elements_by_xpath(link_path)
+            elements = driver.find_elements(By.XPATH, link_path)
             for elt in elements:
                 result.append(elt.get_attribute("href"))
         except StaleElementReferenceException:
@@ -176,16 +176,17 @@ def scrape_apartments(driver, start_price, init_pages, increment):
                 increment = max(1, increment / 2)
                 page_count = set_price_range(driver, current, increment)
             print("Pages:" + str(page_count))
-            first_result = scan_current_page(driver, LINK_XPATH)
-            print("Added: %s" % first_result)
-            results.extend(scan_current_page(driver, LINK_XPATH))
-            prev_results = first_result
-            for i in range(1, page_count):
-                go_to_next_page(driver, i, NEXT_PAGE_XPATH)
-                current_result = scan_until_success(driver, prev_results, i)
-                prev_results = current_result
-                results.extend(current_result)
-                print("Added: %s" % current_result)
+            if page_count > 0:
+                first_result = scan_current_page(driver, LINK_XPATH)
+                print("Added: %s" % first_result)
+                results.extend(scan_current_page(driver, LINK_XPATH))
+                prev_results = first_result
+                for i in range(1, page_count):
+                    go_to_next_page(driver, i, NEXT_PAGE_XPATH)
+                    current_result = scan_until_success(driver, prev_results, i)
+                    prev_results = current_result
+                    results.extend(current_result)
+                    print("Added: %s" % current_result)
         except TimeoutError:
             break
 
@@ -198,7 +199,7 @@ def scrape_apartments(driver, start_price, init_pages, increment):
 
 
 if __name__ == "__main__":
-    chrome_driver = webdriver.Chrome(Service(config_file.get("BASIC", "DRIVER")), options=chrome_options)
+    chrome_driver = webdriver.Chrome(service=Service(config_file.get("BASIC", "DRIVER")), options=chrome_options)
     start = START_PRICE
     chrome_driver.get(URL % (START_PRICE, START_PRICE))
     chrome_driver.maximize_window()
