@@ -65,7 +65,7 @@ AIRPORT_LEVEL_SELECTOR = "div.soundScoreCategory span.ssAirportsData"
 BUSI_LEVEL_SELECTOR = "div.soundScoreCategory span.ssBusinessData"
 
 PRICE_SECTION_SELECTOR = "div#pricingView"
-PRICE_MODEL_SELECTOR = "div.pricingGridItem"
+PRICE_MODEL_SELECTOR = "div[data-tab-content-id='all'] div.pricingGridItem"
 PRICE_MODEL_OVERVIEW_SELECTOR = "div.priceBedRangeInfo"
 MODEL_NAME_SELECTOR = "span.modelName"
 MODEL_RENT_SELECTOR = "span.rentLabel"
@@ -95,7 +95,10 @@ def extract_address_part(index, part, output_data):
         output_data["neighborhood"] = part.get_text().strip()[2:]
         return
     if re.match(ADDRESS_REGEX, part.attrs["class"][0]):
-        output_data["address"] = part.get_text()
+        addr = part.get_text().strip()
+        if addr[-1] == ",":
+            addr = addr[:-1]
+        output_data["address"] = addr
         return
 
 

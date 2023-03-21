@@ -303,10 +303,16 @@ def extract_model_setup(model, output):
     sqft, rent = find_model_median_area_rent(model)
     output["rent"] = rent
     output["sqft"] = sqft
-    output["available"] = True
+    output["available"] = UNK_LABEL
+    if "custom_desc" in output:
+        for k in output["custom_desc"]:
+            if "availa" in output["custom_desc"][k].lower():
+                output["available"] = "True"
+    if "units" in model:
+        output["available"] = "True"
     for info in model["details"]:
         if "Not Available" in info:
-            output["available"] = False
+            output["available"] = "False"
             break
 
 
@@ -626,7 +632,7 @@ if __name__ == "__main__":
         partial(copy_apartment_processor, {"traffic_level": "traffic.level", "busi_level": "busi.level",
                                            "airport_level": "air.level"}, UNK_LABEL),
         partial(copy_model_processor,
-                {"beds": "beds", "baths": "baths", "rent": "rent", "sqft": "sqft", "available": "available"}),
+                {"beds": "beds", "baths": "baths", "rent": "rent", "sqft": "sqft", "available": "available"}, UNK_LABEL),
         partial(features_processor, result),
         partial(amenities_processor, result),
         partial(school_name_processor, school_map),
